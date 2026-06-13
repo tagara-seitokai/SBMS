@@ -13,39 +13,6 @@ import {
     signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-const db = getDb();
-const auth = getAuth();
-
-// DOM 要素
-const logTableBody = document.getElementById('logTableBody');
-const emptyMessage = document.getElementById('emptyMessage');
-const filterSelect = document.getElementById('filterSelect');
-const clearBtn = document.getElementById('clearLogsBtn');
-const loginModalOverlay = document.getElementById('loginModalOverlay');
-const loginEmail = document.getElementById('loginEmail');
-const loginPassword = document.getElementById('loginPassword');
-const confirmLoginBtn = document.getElementById('confirmLoginBtn');
-const cancelLoginBtn = document.getElementById('cancelLoginBtn');
-
-let allLogs = [];
-let pendingClear = false;
-
-// ----- ヘルパー -----
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function updateClock() {
-    const now = new Date();
-    document.getElementById('headerTime').textContent =
-        now.toLocaleString('ja-JP', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-}
-
 // モジュール名 → 表示名＆CSSクラス のマッピング
 const moduleDisplayMap = {
     'items': { label: '備品管理', cssClass: 'source-items' },
@@ -58,20 +25,19 @@ const moduleDisplayMap = {
     'system': { label: 'システム', cssClass: 'source-system' }
 };
 
-function getTypeInfo(log) {
-    if (log.type === '入荷') {
-        return { label: '備品管理', cssClass: 'source-record' };
-    } else if (log.type === '点検') {
-        return { label: '点検', cssClass: 'source-inspections' };
-    } else {
-        const mod = log.module || 'system';
-        const map = moduleDisplayMap[mod];
-        if (map) return map;
-        return { label: 'システム', cssClass: 'source-system' };
-    }
+// ヘルパー
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-// ----- 認証 -----
+let db, auth;
+let allLogs = [], pendingClear = false;
+let logTableBody, emptyMessage, filterSelect, clearBtn;
+let loginModalOverlay, loginEmail, loginPassword, confirmLoginBtn, cancelLoginBtn;
+
+// ----- 認証関連 -----
 function showLoginModal() {
     loginModalOverlay.classList.add('active');
     loginEmail.value = '';
@@ -103,7 +69,7 @@ async function performLogin() {
     }
 }
 
-// ----- ログ読み込み -----
+// ----- 履歴読み込み -----
 async function loadLogs() {
     try {
         const logs = [];
@@ -187,6 +153,19 @@ function buildFilterOptions(logs) {
     });
 }
 
+function getTypeInfo(log) {
+    if (log.type === '入荷') {
+        return { label: '備品管理', cssClass: 'source-record' };
+    } else if (log.type === '点検') {
+        return { label: '点検', cssClass: 'source-inspections' };
+    } else {
+        const mod = log.module || 'system';
+        const map = moduleDisplayMap[mod];
+        if (map) return map;
+        return { label: 'システム', cssClass: 'source-system' };
+    }
+}
+
 function renderLogs(logs) {
     logTableBody.innerHTML = '';
     if (logs.length === 0) {
@@ -235,22 +214,48 @@ async function clearAllLogs() {
     }
 }
 
-// ----- イベント -----
-filterSelect.addEventListener('change', applyFilter);
-clearBtn.addEventListener('click', () => {
-    pendingClear = true;
-    showLoginModal();
-});
-confirmLoginBtn.addEventListener('click', performLogin);
-cancelLoginBtn.addEventListener('click', () => {
-    pendingClear = false;
-    hideLoginModal();
-});
-loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') performLogin(); });
-
 // ----- 初期化 -----
 document.addEventListener('DOMContentLoaded', async () => {
+    // DOM 要素取得（HTML読み込み後）
+    logTableBody = document.getElementById('logTableBody');
+    emptyMessage = document.getElementById('emptyMessage');
+    filterSelect = document.getElementById('filterSelect');
+    clearBtn = document.getElementById('clearLogsBtn');
+    loginModalOverlay = document.getElementById('loginModalOverlay');
+    loginEmail = document.getElementById('loginEmail');
+    loginPassword = document.getElementById('loginPassword');
+    confirmLoginBtn = document.getElementById('confirmLoginBtn');
+    cancelLoginBtn = document.getElementById('cancelLoginBtn');
+
+    // 初期化
+    db = getDb();
+    auth = getAuth();
+
+    // ヘッダー時計
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('headerTime').textContent =
+            now.toLocaleString('ja-JP', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+    }
     updateClock();
     setInterval(updateClock, 1000);
+
+    // イベント登録
+    filterSelect.addEventListener('change', applyFilter);
+    clearBtn.addEventListener('click', () => {
+        pendingClear = true;
+        showLoginModal();
+    });
+    confirmLoginBtn.addEventListener('click', performLogin);
+    cancelLoginBtn.addEventListener('click', () => {
+        pendingClear = false;
+        hideLoginModal();
+    });
+    loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') performLogin(); });
+
+    // 履歴読み込み
     await loadLogs();
 });
