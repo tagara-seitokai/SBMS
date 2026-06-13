@@ -25,28 +25,40 @@ const moduleDisplayMap = {
     'system': { label: 'システム', cssClass: 'source-system' }
 };
 
-// ヘルパー
+function getTypeInfo(log) {
+    if (log.type === '入荷') {
+        return { label: '備品管理', cssClass: 'source-record' };
+    } else if (log.type === '点検') {
+        return { label: '点検', cssClass: 'source-inspections' };
+    } else {
+        const mod = log.module || 'system';
+        const map = moduleDisplayMap[mod];
+        if (map) return map;
+        return { label: 'システム', cssClass: 'source-system' };
+    }
+}
+
+let db, auth;
+let logTableBody, emptyMessage, filterSelect, clearBtn;
+let loginModalOverlay, loginEmail, loginPassword, confirmLoginBtn, cancelLoginBtn;
+let allLogs = [];
+let pendingClear = false;
+
+// ----- ヘルパー -----
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-let db, auth;
-let allLogs = [], pendingClear = false;
-let logTableBody, emptyMessage, filterSelect, clearBtn;
-let loginModalOverlay, loginEmail, loginPassword, confirmLoginBtn, cancelLoginBtn;
-
-// ----- 認証関連 -----
+// ----- 認証 -----
 function showLoginModal() {
     loginModalOverlay.classList.add('active');
     loginEmail.value = '';
     loginPassword.value = '';
     loginEmail.focus();
 }
-function hideLoginModal() {
-    loginModalOverlay.classList.remove('active');
-}
+function hideLoginModal() { loginModalOverlay.classList.remove('active'); }
 
 async function performLogin() {
     const email = loginEmail.value.trim();
@@ -69,12 +81,12 @@ async function performLogin() {
     }
 }
 
-// ----- 履歴読み込み -----
+// ----- ログ読み込み -----
 async function loadLogs() {
     try {
         const logs = [];
 
-        // 1. systemLogs
+        // systemLogs
         const systemSnap = await getDocs(collection(db, "systemLogs"));
         systemSnap.forEach(docSnap => {
             const data = docSnap.data();
@@ -90,7 +102,7 @@ async function loadLogs() {
             });
         });
 
-        // 2. record（入荷）
+        // record（入荷）
         const recordSnap = await getDocs(collection(db, "record"));
         recordSnap.forEach(docSnap => {
             const data = docSnap.data();
@@ -106,7 +118,7 @@ async function loadLogs() {
             });
         });
 
-        // 3. inspections（点検）
+        // inspections（点検）
         const inspSnap = await getDocs(collection(db, "inspections"));
         inspSnap.forEach(docSnap => {
             const data = docSnap.data();
@@ -128,7 +140,7 @@ async function loadLogs() {
         logs.sort((a, b) => b.sortTime - a.sortTime);
         allLogs = logs;
 
-        // フィルター選択肢を生成
+        // フィルターオプション構築
         buildFilterOptions(logs);
         renderLogs(logs);
     } catch (error) {
@@ -151,19 +163,6 @@ function buildFilterOptions(logs) {
         opt.textContent = t;
         filterSelect.appendChild(opt);
     });
-}
-
-function getTypeInfo(log) {
-    if (log.type === '入荷') {
-        return { label: '備品管理', cssClass: 'source-record' };
-    } else if (log.type === '点検') {
-        return { label: '点検', cssClass: 'source-inspections' };
-    } else {
-        const mod = log.module || 'system';
-        const map = moduleDisplayMap[mod];
-        if (map) return map;
-        return { label: 'システム', cssClass: 'source-system' };
-    }
 }
 
 function renderLogs(logs) {
@@ -216,7 +215,7 @@ async function clearAllLogs() {
 
 // ----- 初期化 -----
 document.addEventListener('DOMContentLoaded', async () => {
-    // DOM 要素取得（HTML読み込み後）
+    // DOM 要素取得
     logTableBody = document.getElementById('logTableBody');
     emptyMessage = document.getElementById('emptyMessage');
     filterSelect = document.getElementById('filterSelect');
@@ -227,7 +226,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     confirmLoginBtn = document.getElementById('confirmLoginBtn');
     cancelLoginBtn = document.getElementById('cancelLoginBtn');
 
-    // 初期化
     db = getDb();
     auth = getAuth();
 
@@ -243,7 +241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateClock();
     setInterval(updateClock, 1000);
 
-    // イベント登録
+    // イベント
     filterSelect.addEventListener('change', applyFilter);
     clearBtn.addEventListener('click', () => {
         pendingClear = true;
@@ -256,6 +254,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') performLogin(); });
 
-    // 履歴読み込み
+    // データ読み込み
     await loadLogs();
 });

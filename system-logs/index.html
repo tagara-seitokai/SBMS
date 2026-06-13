@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>操作履歴 - 生徒会資産管理</title>
+    <title>操作履歴 - 東京都立田柄高等学校資産管理</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -25,28 +25,23 @@
         .log-table tbody tr:hover { background: rgba(255,255,255,0.03); }
         .empty-message { text-align: center; color: var(--text-secondary); padding: 40px; }
 
-        /* 種類バッジ（モジュール別色分け） */
         .source-badge {
             display: inline-block; padding: 2px 8px; border-radius: 4px;
             font-size: 0.75rem; font-weight: 600; white-space: nowrap;
         }
-        .source-items { background: #00B4D8; color: #0F172A; }          /* 備品管理 */
-        .source-inspections { background: #F59E0B; color: #0F172A; }   /* 点検 */
-        .source-record { background: #22C55E; color: #0F172A; }        /* 入荷（備品管理と同じ色でも可だが区別） */
-        .source-users { background: #8B5CF6; color: #F1F5F9; }         /* ユーザー管理 */
-        .source-system-logs { background: #EC4899; color: #F1F5F9; }   /* 操作履歴 */
-        .source-system { background: #6B7280; color: #F1F5F9; }        /* システム */
-        /* 予備：貸出関連 */
-        .source-loans { background: #14B8A6; color: #0F172A; }         /* 貸出・返却 */
+        .source-items { background: #00B4D8; color: #0F172A; }
+        .source-inspections { background: #F59E0B; color: #0F172A; }
+        .source-record { background: #22C55E; color: #0F172A; }
+        .source-users { background: #8B5CF6; color: #F1F5F9; }
+        .source-system-logs { background: #EC4899; color: #F1F5F9; }
+        .source-system { background: #6B7280; color: #F1F5F9; }
+        .source-loans { background: #14B8A6; color: #0F172A; }
 
-        /* フィルターエリア */
         .filter-bar {
             display: flex; align-items: center; gap: 12px;
             margin-bottom: 20px; flex-wrap: wrap;
         }
-        .filter-bar label {
-            font-size: 0.9rem; color: var(--text-secondary);
-        }
+        .filter-bar label { font-size: 0.9rem; color: var(--text-secondary); }
         .filter-bar select {
             padding: 8px 12px; border-radius: 8px;
             border: 1px solid var(--glass-border);
@@ -77,7 +72,6 @@
         }
         .footer .dev-credit { margin-top: 8px; font-size: 0.75rem; opacity: 0.7; }
 
-        /* モーダル */
         .modal-overlay {
             display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -123,7 +117,7 @@
     <header class="header">
         <a href="../index.html" class="header-logo">
             <div class="icon">📦</div>
-            <h1>生徒会資産管理</h1>
+            <h1>東京都立田柄高等学校資産管理</h1>
         </a>
         <div class="header-time" id="headerTime">--</div>
     </header>
@@ -159,6 +153,9 @@
             </div>
         </div>
 
+        <div class="clear-bar">
+            <button class="btn btn-danger" id="clearLogsBtn">🗑 全履歴をクリア</button>
+        </div>
     </main>
 
     <footer class="footer">
