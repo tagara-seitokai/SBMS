@@ -27,7 +27,7 @@ const loginPassword = document.getElementById('loginPassword');
 const confirmLoginBtn = document.getElementById('confirmLoginBtn');
 const cancelLoginBtn = document.getElementById('cancelLoginBtn');
 
-let allLogs = [];       // 全ログデータ（フィルター前）
+let allLogs = [];
 let pendingClear = false;
 
 // ----- ヘルパー -----
@@ -52,28 +52,22 @@ const moduleDisplayMap = {
     'inspections': { label: '点検', cssClass: 'source-inspections' },
     'users': { label: 'ユーザー管理', cssClass: 'source-users' },
     'system-logs': { label: '操作履歴', cssClass: 'source-system-logs' },
-    'loans': { label: '貸出・返却', cssClass: 'source-loans' },       // 将来用
-    'loan-history': { label: '貸出履歴', cssClass: 'source-loans' }, // 将来用
+    'loans': { label: '貸出・返却', cssClass: 'source-loans' },
+    'loan-history': { label: '貸出履歴', cssClass: 'source-loans' },
     'トップ': { label: 'システム', cssClass: 'source-system' },
     'system': { label: 'システム', cssClass: 'source-system' }
 };
 
-// 種類に応じた表示名とCSSクラスを取得
 function getTypeInfo(log) {
-    // log.type は内部的な区分 ('システム' or '入荷' or '点検')
     if (log.type === '入荷') {
-        return { label: '備品管理', cssClass: 'source-record' }; // 入荷も備品管理の一部
+        return { label: '備品管理', cssClass: 'source-record' };
     } else if (log.type === '点検') {
         return { label: '点検', cssClass: 'source-inspections' };
     } else {
-        // システムログの場合、targetModule から判断
         const mod = log.module || 'system';
         const map = moduleDisplayMap[mod];
-        if (map) {
-            return map;
-        } else {
-            return { label: 'システム', cssClass: 'source-system' };
-        }
+        if (map) return map;
+        return { label: 'システム', cssClass: 'source-system' };
     }
 }
 
@@ -84,7 +78,6 @@ function showLoginModal() {
     loginPassword.value = '';
     loginEmail.focus();
 }
-
 function hideLoginModal() {
     loginModalOverlay.classList.remove('active');
 }
@@ -105,7 +98,7 @@ async function performLogin() {
             await clearAllLogs();
         }
     } catch (error) {
-        console.error('ログインエラー:', error);
+        console.error(error);
         showToast('認証に失敗しました', 'error');
     }
 }
@@ -141,7 +134,7 @@ async function loadLogs() {
                 time: timeStr,
                 sortTime: data.timestamp ? data.timestamp.seconds : 0,
                 type: '入荷',
-                module: 'items', // 入荷は備品管理の操作
+                module: 'items',
                 operator: data.operator || '-',
                 content: `${data.itemName} +${data.quantity}`
             });
@@ -159,7 +152,7 @@ async function loadLogs() {
                 time: timeStr,
                 sortTime: data.createdAt ? data.createdAt.seconds : 0,
                 type: '点検',
-                module: 'inspections', // 点検モジュール
+                module: 'inspections',
                 operator: '-',
                 content: `${data.date} 全体状態: ${statusText} (対象${data.details ? data.details.length : 0}件)`
             });
@@ -169,9 +162,8 @@ async function loadLogs() {
         logs.sort((a, b) => b.sortTime - a.sortTime);
         allLogs = logs;
 
-        // フィルターオプションを生成
+        // フィルター選択肢を生成
         buildFilterOptions(logs);
-        // 描画
         renderLogs(logs);
     } catch (error) {
         console.error('ログ読み込みエラー:', error);
@@ -179,7 +171,6 @@ async function loadLogs() {
     }
 }
 
-// フィルター選択肢を構築
 function buildFilterOptions(logs) {
     const typeSet = new Set();
     logs.forEach(log => {
@@ -187,7 +178,6 @@ function buildFilterOptions(logs) {
         typeSet.add(info.label);
     });
     const types = Array.from(typeSet).sort();
-    // デフォルトの「すべて」を保持しつつ、選択肢を追加
     filterSelect.innerHTML = '<option value="">すべて表示</option>';
     types.forEach(t => {
         const opt = document.createElement('option');
@@ -197,7 +187,6 @@ function buildFilterOptions(logs) {
     });
 }
 
-// ログをテーブルに描画
 function renderLogs(logs) {
     logTableBody.innerHTML = '';
     if (logs.length === 0) {
@@ -218,16 +207,12 @@ function renderLogs(logs) {
     }
 }
 
-// フィルター処理
 function applyFilter() {
     const selectedType = filterSelect.value;
     if (!selectedType) {
         renderLogs(allLogs);
     } else {
-        const filtered = allLogs.filter(log => {
-            const info = getTypeInfo(log);
-            return info.label === selectedType;
-        });
+        const filtered = allLogs.filter(log => getTypeInfo(log).label === selectedType);
         renderLogs(filtered);
     }
 }
@@ -237,39 +222,31 @@ async function clearAllLogs() {
     try {
         const collections = ['systemLogs', 'record', 'inspections'];
         const batch = writeBatch(db);
-
         for (const colName of collections) {
             const snap = await getDocs(collection(db, colName));
-            snap.forEach(docSnap => {
-                batch.delete(doc(db, colName, docSnap.id));
-            });
+            snap.forEach(docSnap => batch.delete(doc(db, colName, docSnap.id)));
         }
-
         await batch.commit();
         showToast('全履歴をクリアしました', 'success');
         await loadLogs();
     } catch (error) {
-        console.error('クリアエラー:', error);
+        console.error(error);
         showToast('クリアに失敗しました', 'error');
     }
 }
 
-// ----- イベント登録 -----
+// ----- イベント -----
 filterSelect.addEventListener('change', applyFilter);
-
 clearBtn.addEventListener('click', () => {
     pendingClear = true;
     showLoginModal();
 });
-
 confirmLoginBtn.addEventListener('click', performLogin);
 cancelLoginBtn.addEventListener('click', () => {
     pendingClear = false;
     hideLoginModal();
 });
-loginPassword.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') performLogin();
-});
+loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') performLogin(); });
 
 // ----- 初期化 -----
 document.addEventListener('DOMContentLoaded', async () => {
