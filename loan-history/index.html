@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貸出履歴 - 東京都立田柄高等学校資産管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .filter-bar {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .filter-bar label { font-size: 0.9rem; color: var(--text-secondary); }
+        .filter-bar select {
+            padding: 8px 12px; border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.05);
+            color: #0F172A; font-size: 0.9rem; outline: none;
+            transition: border-color 0.2s;
+        }
+        .filter-bar select:valid { color: var(--text); }
+        .filter-bar select:invalid { color: var(--text-secondary); }
+        .filter-bar select option { color: #0F172A; }
+        .filter-bar select:focus { border-color: var(--primary); }
+
+        .table-wrapper { padding: 8px; overflow-x: auto; }
+        .history-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        .history-table th {
+            text-align: left; padding: 12px 8px; font-size: 0.8rem;
+            color: var(--text-secondary); border-bottom: 1px solid var(--glass-border);
+            font-weight: 500; white-space: nowrap;
+        }
+        .history-table td {
+            padding: 12px 8px; font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--text);
+        }
+        .history-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .empty-message { text-align: center; color: var(--text-secondary); padding: 40px; }
+
+        .status-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .status-active { background: #22C55E; color: #0F172A; }
+        .status-returned { background: #6B7280; color: white; }
+
+        .footer {
+            text-align: center; padding: 24px; color: var(--text-secondary);
+            font-size: 0.8rem; border-top: 1px solid var(--glass-border); margin-top: 32px;
+        }
+        .footer .dev-credit { margin-top: 8px; font-size: 0.75rem; opacity: 0.7; }
+
+        @media (max-width: 640px) {
+            .filter-bar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="../index.html" class="header-logo">
+            <div class="icon">📦</div>
+            <h1>東京都立田柄高等学校資産管理</h1>
+        </a>
+        <div class="header-time" id="headerTime">--</div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← トップへ</a>
+            <h2>📜 貸出履歴</h2>
+        </div>
+
+        <!-- フィルター -->
+        <div class="filter-bar">
+            <label for="statusFilter">状態で絞り込み：</label>
+            <select id="statusFilter">
+                <option value="">すべて表示</option>
+                <option value="active">貸出中</option>
+                <option value="returned">返却済</option>
+            </select>
+        </div>
+
+        <!-- 履歴テーブル -->
+        <div class="glass-card table-wrapper">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>物品名</th>
+                        <th>貸出先</th>
+                        <th>出席番号</th>
+                        <th>数量</th>
+                        <th>消耗品</th>
+                        <th>貸出日</th>
+                        <th>承認人</th>
+                        <th>状態</th>
+                        <th>返却日</th>
+                        <th>受取人</th>
+                        <th>返却者</th>
+                        <th>返却者出席番号</th>
+                        <th>返却数量</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+            <div class="empty-message" id="emptyMessage" style="display: none;">
+                貸出履歴はありません。
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div>© 2026 生徒会資産管理システム — 次世代へ引き継ぐために。</div>
+        <div class="dev-credit">開発者：包 宸華　テスト：李 昊宇</div>
+    </footer>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script type="module" src="../common.js"></script>
+    <script type="module" src="loan-history.js"></script>
+</body>
+</html>

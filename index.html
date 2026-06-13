@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生徒会資産管理システム</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 首页通知红框 */
+        .home-notification-bar {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #FCA5A5;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: none; /* 默认隐藏，有通知时显示 */
+        }
+        .home-notification-bar.visible {
+            display: flex;
+        }
+        .home-notification-bar .notif-icon {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        .home-notification-bar .notif-content {
+            flex: 1;
+        }
+        .home-notification-bar .notif-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        /* 模块卡片图标与标题横排，标题增大 */
+        .module-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .module-card-header .module-icon {
+            margin-bottom: 0;
+        }
+        .module-card-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="index.html" class="header-logo">
+            <div class="icon">📦</div>
+            <h1>東京都立田柄高等学校資産管理</h1>
+        </a>
+        <div class="header-time" id="headerTime">--</div>
+    </header>
+
+    <main class="container">
+        <!-- 最新通知栏（红框） -->
+        <div class="home-notification-bar" id="homeNotificationBar">
+            <span class="notif-icon">📢</span>
+            <div class="notif-content">
+                <div class="notif-title" id="notifTitle"></div>
+                <div id="notifBody"></div>
+            </div>
+        </div>
+
+        <section class="welcome">
+            <h2>ようこそ</h2>
+            <p>毎度、学校の備品を大切に管理されて頂き誠にありがとうございます。</p>
+        </section>
+
+        <section class="stats-grid">
+            <div class="stat-card glass-card">
+                <div class="stat-icon">📋</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statTotalItems">--</div>
+                    <div class="stat-label">登録備品の種類</div>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statActiveLoans">--</div>
+                    <div class="stat-label">貸出中</div>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statLastInspection">----</div>
+                    <div class="stat-label">前回点検日</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="module-grid">
+            <!-- 備品管理 -->
+            <a href="items/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">📦</div>
+                    <h3>備品管理</h3>
+                </div>
+                <p>備品の登録・編集・削除、在庫数の管理。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- 貸出・返却 -->
+            <a href="loans/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">↗️</div>
+                    <h3>貸出・返却</h3>
+                </div>
+                <p>備品の貸出と返却を簡単に処理します。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- 貸出履歴 -->
+            <a href="loan-history/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">📜</div>
+                    <h3>貸出履歴</h3>
+                </div>
+                <p>過去の貸出・返却記録を閲覧します。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- 点検 -->
+            <a href="inspections/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">🔍</div>
+                    <h3>点検</h3>
+                </div>
+                <p>定期的な備品点検の実施と結果の記録。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- ユーザー管理 -->
+            <a href="users/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">👥</div>
+                    <h3>ユーザー管理</h3>
+                </div>
+                <p>貸出可能な生徒・教職員の一覧を管理します。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- 操作履歴 -->
+            <a href="system-logs/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">📓</div>
+                    <h3>操作履歴</h3>
+                </div>
+                <p>すべての操作（点検・貸出返却・備品増減）の記録。</p>
+                <span class="arrow">→</span>
+            </a>
+
+            <!-- お知らせ -->
+            <a href="oshirase/index.html" class="module-card glass-card">
+                <div class="module-card-header">
+                    <div class="module-icon">📢</div>
+                    <h3>お知らせ</h3>
+                </div>
+                <p>生徒会内の連絡事項を掲示します。</p>
+                <span class="arrow">→</span>
+            </a>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div>© 2026 生徒会資産管理システム — 次世代へ引き継ぐために。</div>
+        <div class="dev-credit">開発者：包 宸華　テスト：李 昊宇</div>
+    </footer>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script type="module" src="common.js"></script>
+    <script type="module">
+        import { getDb, showToast } from "./common.js";
+        import {
+            collection,
+            getDocs,
+            query,
+            orderBy,
+            limit,
+            where
+        } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+        const db = getDb();
+
+        function updateHeaderTime() {
+            const now = new Date();
+            document.getElementById('headerTime').textContent =
+                now.toLocaleString('ja-JP', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+        }
+        updateHeaderTime();
+        setInterval(updateHeaderTime, 1000);
+
+        async function loadStats() {
+            try {
+                // 登録備品の種類数（重複除外）
+                const itemsSnap = await getDocs(collection(db, "items"));
+                const items = [];
+                itemsSnap.forEach(doc => items.push(doc.data()));
+                const uniqueNames = new Set(items.map(item => item.name).filter(Boolean));
+                document.getElementById('statTotalItems').textContent = uniqueNames.size;
+
+                // 貸出中の数
+                const activeLoansQuery = query(collection(db, "loans"), where("status", "==", "active"));
+                const activeLoansSnap = await getDocs(activeLoansQuery);
+                document.getElementById('statActiveLoans').textContent = activeLoansSnap.size;
+
+                // 前回点検日
+                const inspQuery = query(collection(db, "inspections"), orderBy("createdAt", "desc"), limit(1));
+                const inspSnap = await getDocs(inspQuery);
+                if (!inspSnap.empty) {
+                    const lastInsp = inspSnap.docs[0].data();
+                    document.getElementById('statLastInspection').textContent = lastInsp.date || '----';
+                } else {
+                    document.getElementById('statLastInspection').textContent = '----';
+                }
+            } catch (error) {
+                console.error('統計データ取得エラー:', error);
+                document.getElementById('statTotalItems').textContent = '--';
+                document.getElementById('statActiveLoans').textContent = '--';
+                document.getElementById('statLastInspection').textContent = '----';
+            }
+        }
+
+        // 最新のお知らせを読み込む
+        async function loadLatestNotification() {
+            try {
+                const notifQuery = query(
+                    collection(db, "oshirase"),
+                    orderBy("createdAt", "desc"),
+                    limit(1)
+                );
+                const snap = await getDocs(notifQuery);
+                const bar = document.getElementById('homeNotificationBar');
+                if (!snap.empty) {
+                    const data = snap.docs[0].data();
+                    document.getElementById('notifTitle').textContent = data.title || '';
+                    document.getElementById('notifBody').textContent = data.content || '';
+                    bar.classList.add('visible');
+                } else {
+                    bar.classList.remove('visible');
+                }
+            } catch (error) {
+                console.error('お知らせ取得エラー:', error);
+                // エラー時は非表示のまま
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            showToast('システム準備完了', 'success');
+            await loadStats();
+            await loadLatestNotification();
+        });
+    </script>
+</body>
+</html>
