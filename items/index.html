@@ -7,25 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- グローバルスタイル -->
     <link rel="stylesheet" href="../style.css">
-    <!-- ページ固有スタイル -->
     <style>
-        .alert-bar {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 12px;
-            padding: 14px 20px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #FCA5A5;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        .alert-bar .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
-
         .form-card { padding: 24px; margin-bottom: 24px; }
         .form-card h3 { margin-bottom: 16px; font-size: 1.1rem; }
         .form-row {
@@ -53,36 +36,32 @@
             background-position: right 8px center;
             padding-right: 30px;
         }
-        .form-group select:valid {
-            color: var(--text);
-        }
-        .form-group select:invalid {
-            color: var(--text-secondary);
-        }
-        .form-group select option {
-            color: #0F172A;
-        }
+        .form-group select:valid { color: var(--text); }
+        .form-group select:invalid { color: var(--text-secondary); }
+        .form-group select option { color: #0F172A; }
         .form-group input:focus,
         .form-group select:focus { border-color: var(--primary); }
 
         .btn {
             padding: 10px 20px; border-radius: 8px; border: none;
             font-weight: 600; font-size: 0.9rem; cursor: pointer;
-            transition: background 0.2s, opacity 0.2s; white-space: nowrap;
+            transition: background 0.2s; white-space: nowrap;
         }
         .btn-primary { background: var(--primary); color: #0F172A; }
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-danger {
-            background: rgba(239,68,68,0.8); color: white; font-size: 0.8rem; padding: 6px 12px;
+            background: rgba(239,68,68,0.8); color: white;
+            font-size: 0.8rem; padding: 6px 12px;
         }
         .btn-danger:hover { background: rgba(239,68,68,1); }
-        .btn-outline {
-            background: transparent; border: 1px solid var(--primary); color: var(--primary);
+        .btn-success {
+            background: #22C55E; color: #0F172A;
+            font-size: 0.8rem; padding: 6px 12px;
         }
-        .btn-outline:hover { background: rgba(0,180,216,0.1); }
+        .btn-success:hover { background: #16A34A; }
 
         .table-wrapper { padding: 8px; margin-bottom: 24px; overflow-x: auto; }
-        .items-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         .items-table th {
             text-align: left; padding: 12px 8px; font-size: 0.85rem;
             color: var(--text-secondary); border-bottom: 1px solid var(--glass-border);
@@ -96,20 +75,13 @@
         .items-table tbody tr:hover { background: rgba(255,255,255,0.03); }
         .empty-message { text-align: center; color: var(--text-secondary); padding: 40px; }
 
-        .stock-movement-card { padding: 24px; margin-bottom: 24px; }
-        .stock-movement-card h3 { margin-bottom: 16px; font-size: 1.1rem; }
-        .movement-row {
-            display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
-        }
-        .text-muted { color: var(--text-secondary); font-size: 0.85rem; }
-
         .footer {
             text-align: center; padding: 24px; color: var(--text-secondary);
             font-size: 0.8rem; border-top: 1px solid var(--glass-border);
         }
         .footer .dev-credit { margin-top: 8px; font-size: 0.75rem; opacity: 0.7; }
 
-        /* モーダル */
+        /* 補充モーダル */
         .modal-overlay {
             display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -119,22 +91,23 @@
         .modal-overlay.active { display: flex; }
         .modal {
             background: #1E293B; border: 1px solid var(--glass-border);
-            border-radius: var(--radius); padding: 32px;
+            border-radius: var(--radius); padding: 24px;
             width: 90%; max-width: 400px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5); backdrop-filter: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
-        .modal h3 { margin-bottom: 20px; font-size: 1.2rem; color: var(--text); }
+        .modal h3 { margin-bottom: 16px; font-size: 1.1rem; }
         .modal .form-group { margin-bottom: 16px; }
         .modal .form-group label {
-            font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 4px;
+            font-size: 0.85rem; color: var(--text-secondary);
+            display: block; margin-bottom: 4px;
         }
-        .modal .form-group input {
+        .modal .form-group input,
+        .modal .form-group select {
             width: 100%; padding: 10px 12px; border-radius: 8px;
             border: 1px solid var(--glass-border);
             background: rgba(255,255,255,0.05); color: var(--text);
             font-size: 0.95rem; outline: none;
         }
-        .modal .form-group input:focus { border-color: var(--primary); }
         .modal .btn-group {
             display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;
         }
@@ -145,7 +118,7 @@
         }
 
         @media (max-width: 640px) {
-            .form-row, .movement-row { flex-direction: column; }
+            .form-row { flex-direction: column; }
         }
     </style>
 </head>
@@ -164,11 +137,6 @@
             <h2>📦 備品管理</h2>
         </div>
 
-        <div class="alert-bar">
-            <span class="alert-icon">⚠️</span>
-            <span>備品を新しく登録する際は、すでに同じ物が登録されていないか、必ず一覧を確認してから追加してください。</span>
-        </div>
-
         <!-- 新規備品追加フォーム -->
         <div class="form-card glass-card">
             <h3>新規備品を追加</h3>
@@ -181,17 +149,29 @@
                     <label for="itemLocation">ロケーション番号</label>
                     <input type="text" id="itemLocation" placeholder="例：A-103">
                 </div>
-                <div class="form-group" style="max-width: 90px;">
+                <div class="form-group" style="max-width: 130px;">
+                    <label for="recordType">記録方式</label>
+                    <select id="recordType">
+                        <option value="quantity">数量</option>
+                        <option value="status">状態</option>
+                    </select>
+                </div>
+                <div class="form-group" id="quantityGroup" style="max-width: 90px;">
                     <label for="itemQuantity">数量</label>
                     <input type="number" id="itemQuantity" min="0" value="1">
                 </div>
-                <div class="form-group">
-                    <label for="itemOperatorSelect">操作者</label>
-                    <select id="itemOperatorSelect" required>
-                        <option value="">-- 選択してください --</option>
+                <div class="form-group" id="statusGroup" style="max-width: 130px; display:none;">
+                    <label for="itemStatus">状態</label>
+                    <select id="itemStatus">
+                        <option value="十分">十分</option>
+                        <option value="不足">不足</option>
+                        <option value="要補充">要補充</option>
                     </select>
                 </div>
-                <!-- 消耗品：○／× -->
+                <div class="form-group" style="max-width: 130px;">
+                    <label for="studentId">出席番号</label>
+                    <input type="text" id="studentId" placeholder="例：4635">
+                </div>
                 <div class="form-group" style="max-width: 90px;">
                     <label for="itemConsumable">消耗品</label>
                     <select id="itemConsumable">
@@ -201,7 +181,7 @@
                 </div>
                 <div class="form-group">
                     <label for="itemNotes">備考</label>
-                    <input type="text" id="itemNotes" placeholder="例：予備含む">
+                    <input type="text" id="itemNotes" placeholder="任意">
                 </div>
                 <button class="btn btn-primary" id="addBtn">＋ 追加</button>
             </div>
@@ -213,9 +193,10 @@
                 <thead>
                     <tr>
                         <th>物品名</th>
-                        <th>ロケーション番号</th>
-                        <th>数量</th>
-                        <th>操作者</th>
+                        <th>ロケーション</th>
+                        <th>記録方式</th>
+                        <th>値</th>
+                        <th>出席番号</th>
                         <th>消耗品</th>
                         <th>備考</th>
                         <th>操作</th>
@@ -227,33 +208,6 @@
                 まだ備品が登録されていません。
             </div>
         </div>
-
-        <!-- 入荷登録エリア -->
-        <div class="glass-card stock-movement-card">
-            <h3>📥 入荷 登録</h3>
-            <div class="movement-row">
-                <div class="form-group" style="flex:2;">
-                    <label for="movementItemSelect">対象備品</label>
-                    <select id="movementItemSelect" required>
-                        <option value="">-- 備品を選択してください --</option>
-                    </select>
-                </div>
-                <div class="form-group" style="max-width: 90px;">
-                    <label for="movementQuantity">数量</label>
-                    <input type="number" id="movementQuantity" min="1" value="1">
-                </div>
-                <div class="form-group">
-                    <label for="movementOperatorSelect">操作者</label>
-                    <select id="movementOperatorSelect">
-                        <option value="">-- 選択してください --</option>
-                    </select>
-                </div>
-                <button class="btn btn-outline" id="movementSubmitBtn">入荷登録</button>
-            </div>
-            <p class="text-muted" style="margin-top: 12px;">
-                ※ 入荷数量を登録すると、自動的に在庫に加算されます。
-            </p>
-        </div>
     </main>
 
     <footer class="footer">
@@ -263,21 +217,41 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- 認証モーダル -->
-    <div class="modal-overlay" id="loginModalOverlay">
+    <!-- 補充モーダル -->
+    <div class="modal-overlay" id="refillModalOverlay">
         <div class="modal">
-            <h3>🔐 認証が必要です</h3>
-            <div class="form-group">
-                <label for="loginEmail">メールアドレス</label>
-                <input type="email" id="loginEmail" placeholder="user@example.com">
+            <h3 id="refillModalTitle">備品の補充</h3>
+            <div id="refillQuantitySection">
+                <div class="form-group">
+                    <label>現在の数量</label>
+                    <input type="text" id="currentQtyDisplay" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="addQuantity">追加数量</label>
+                    <input type="number" id="addQuantity" min="0" value="0">
+                </div>
+            </div>
+            <div id="refillStatusSection" style="display:none;">
+                <div class="form-group">
+                    <label>現在の状態</label>
+                    <input type="text" id="currentStatusDisplay" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="newStatus">新しい状態</label>
+                    <select id="newStatus">
+                        <option value="十分">十分</option>
+                        <option value="不足">不足</option>
+                        <option value="要補充">要補充</option>
+                    </select>
+                </div>
             </div>
             <div class="form-group">
-                <label for="loginPassword">パスワード</label>
-                <input type="password" id="loginPassword" placeholder="パスワード">
+                <label for="refillStudentId">出席番号</label>
+                <input type="text" id="refillStudentId" placeholder="例：4635">
             </div>
             <div class="btn-group">
-                <button class="btn-secondary" id="cancelLoginBtn">キャンセル</button>
-                <button class="btn btn-primary" id="confirmLoginBtn">ログイン</button>
+                <button class="btn-secondary" id="cancelRefillBtn">キャンセル</button>
+                <button class="btn btn-primary" id="confirmRefillBtn">補充する</button>
             </div>
         </div>
     </div>
