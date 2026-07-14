@@ -1,5 +1,5 @@
 // =============================================
-// 備品管理モジュール（認証・入荷登録・消耗品○×対応）
+// 備品管理モジュール（数量/状態、補充機能、ロケーション並び替え）
 // =============================================
 import { getDb, writeSystemLog, showToast, formatDateTime } from "../common.js";
 import {
@@ -11,41 +11,38 @@ import {
     updateDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-import {
-    getAuth,
-    signInWithEmailAndPassword,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
 const db = getDb();
-const auth = getAuth();
 
 // DOM 要素
-const itemNameInput = document.getElementById('itemName');
-const itemLocationInput = document.getElementById('itemLocation');
-const itemQuantityInput = document.getElementById('itemQuantity');
-const itemOperatorSelect = document.getElementById('itemOperatorSelect');
-const itemConsumableSelect = document.getElementById('itemConsumable');
-const itemNotesInput = document.getElementById('itemNotes');
+const itemName = document.getElementById('itemName');
+const itemLocation = document.getElementById('itemLocation');
+const recordType = document.getElementById('recordType');
+const quantityGroup = document.getElementById('quantityGroup');
+const statusGroup = document.getElementById('statusGroup');
+const itemQuantity = document.getElementById('itemQuantity');
+const itemStatus = document.getElementById('itemStatus');
+const studentId = document.getElementById('studentId');
+const itemConsumable = document.getElementById('itemConsumable');
+const itemNotes = document.getElementById('itemNotes');
 const addBtn = document.getElementById('addBtn');
 const itemsTableBody = document.getElementById('itemsTableBody');
 const emptyMessage = document.getElementById('emptyMessage');
 
-const movementItemSelect = document.getElementById('movementItemSelect');
-const movementQuantityInput = document.getElementById('movementQuantity');
-const movementOperatorSelect = document.getElementById('movementOperatorSelect');
-const movementSubmitBtn = document.getElementById('movementSubmitBtn');
+// 補充モーダル
+const refillModalOverlay = document.getElementById('refillModalOverlay');
+const refillQuantitySection = document.getElementById('refillQuantitySection');
+const refillStatusSection = document.getElementById('refillStatusSection');
+const currentQtyDisplay = document.getElementById('currentQtyDisplay');
+const addQuantity = document.getElementById('addQuantity');
+const currentStatusDisplay = document.getElementById('currentStatusDisplay');
+const newStatus = document.getElementById('newStatus');
+const refillStudentId = document.getElementById('refillStudentId');
+const confirmRefillBtn = document.getElementById('confirmRefillBtn');
+const cancelRefillBtn = document.getElementById('cancelRefillBtn');
 
-const loginModalOverlay = document.getElementById('loginModalOverlay');
-const loginEmail = document.getElementById('loginEmail');
-const loginPassword = document.getElementById('loginPassword');
-const confirmLoginBtn = document.getElementById('confirmLoginBtn');
-const cancelLoginBtn = document.getElementById('cancelLoginBtn');
-
-let currentUser = null;
-let pendingAddItem = false;
-let pendingDeleteId = null;
 let currentItems = [];
+let refillingItemId = null;
 
 // ----- ヘルパー -----
 function escapeHtml(text) {
@@ -63,189 +60,212 @@ function updateClock() {
         });
 }
 
-// ----- 認証 -----
-function showLoginModal() {
-    loginModalOverlay.classList.add('active');
-    loginEmail.value = '';
-    loginPassword.value = '';
-    loginEmail.focus();
-}
-function hideLoginModal() {
-    loginModalOverlay.classList.remove('active');
+// 自然ソート（A-1, A-2, A-10 順）
+function naturalCompare(a, b) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
-async function performLogin() {
-    const email = loginEmail.value.trim();
-    const password = loginPassword.value.trim();
-    if (!email || !password) {
-        showToast('メールアドレスとパスワードを入力してください', 'error');
-        return;
+// 記録方式切り替え
+recordType.addEventListener('change', () => {
+    if (recordType.value === 'quantity') {
+        quantityGroup.style.display = 'flex';
+        statusGroup.style.display = 'none';
+    } else {
+        quantityGroup.style.display = 'none';
+        statusGroup.style.display = 'flex';
     }
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        currentUser = userCredential.user;
-        hideLoginModal();
-        showToast('ログインしました', 'success');
-        if (pendingAddItem) {
-            pendingAddItem = false;
-            await addItem();
-        }
-        if (pendingDeleteId) {
-            const idToDelete = pendingDeleteId;
-            pendingDeleteId = null;
-            await deleteItem(idToDelete);
-        }
-    } catch (error) {
-        console.error('ログインエラー:', error);
-        showToast('ログインに失敗しました。メールアドレスとパスワードを確認してください', 'error');
-    }
-}
-
-onAuthStateChanged(auth, (user) => {
-    currentUser = user;
 });
 
-// ----- ドロップダウン更新 -----
-async function loadOperatorOptions() {
-    try {
-        const usersSnap = await getDocs(collection(db, "users"));
-        const names = [];
-        usersSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data.name && data.name.trim() !== '') {
-                names.push(data.name.trim());
-            }
-        });
-        const uniqueNames = [...new Set(names)].sort();
-
-        // 操作者用（追加フォーム）
-        itemOperatorSelect.innerHTML = '<option value="">-- 選択してください --</option>';
-        uniqueNames.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            itemOperatorSelect.appendChild(opt);
-        });
-
-        // 入荷用操作者
-        movementOperatorSelect.innerHTML = '<option value="">-- 選択してください --</option>';
-        uniqueNames.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            movementOperatorSelect.appendChild(opt);
-        });
-    } catch (error) {
-        console.error('ユーザー一覧取得エラー:', error);
-    }
-}
-
-// ----- 備品一覧読み込み -----
+// ----- データ読み込み -----
 async function loadItems() {
     try {
-        const querySnapshot = await getDocs(collection(db, "items"));
+        const snap = await getDocs(collection(db, "items"));
         const items = [];
-        querySnapshot.forEach(docSnap => items.push({ id: docSnap.id, ...docSnap.data() }));
+        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+
+        // ロケーションで自然順ソート
+        items.sort((a, b) => naturalCompare(a.location || '', b.location || ''));
+
         currentItems = items;
-
-        itemsTableBody.innerHTML = '';
-        if (items.length === 0) {
-            emptyMessage.style.display = 'block';
-        } else {
-            emptyMessage.style.display = 'none';
-            items.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${escapeHtml(item.name || '')}</td>
-                    <td>${escapeHtml(item.location || '-')}</td>
-                    <td>${item.quantity ?? 0}</td>
-                    <td>${escapeHtml(item.operator || '-')}</td>
-                    <td>${item.isConsumable ? '○' : '×'}</td>
-                    <td>${escapeHtml(item.notes || '-')}</td>
-                    <td><button class="btn btn-danger delete-btn" data-id="${item.id}">削除</button></td>
-                `;
-                itemsTableBody.appendChild(row);
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    if (confirm('この備品を削除しますか？（認証が必要です）')) {
-                        pendingDeleteId = id;
-                        showLoginModal();
-                    }
-                });
-            });
-        }
-
-        updateMovementSelect(items);
+        renderTable(items);
     } catch (error) {
-        console.error('備品読み込みエラー:', error);
+        console.error(error);
         showToast('備品の読み込みに失敗しました', 'error');
     }
 }
 
-function updateMovementSelect(items) {
-    const uniqueNames = [...new Set(items.map(item => item.name).filter(Boolean))].sort();
-    movementItemSelect.innerHTML = '<option value="">-- 備品を選択してください --</option>';
-    uniqueNames.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        movementItemSelect.appendChild(option);
+function renderTable(items) {
+    itemsTableBody.innerHTML = '';
+    if (items.length === 0) {
+        emptyMessage.style.display = 'block';
+        return;
+    }
+    emptyMessage.style.display = 'none';
+
+    items.forEach(item => {
+        const row = document.createElement('tr');
+        let displayValue = '';
+        if (item.recordType === 'status') {
+            displayValue = item.status || '-';
+        } else {
+            displayValue = item.quantity ?? 0;
+        }
+        row.innerHTML = `
+            <td>${escapeHtml(item.name || '')}</td>
+            <td>${escapeHtml(item.location || '-')}</td>
+            <td>${item.recordType === 'status' ? '状態' : '数量'}</td>
+            <td>${displayValue}</td>
+            <td>${escapeHtml(item.studentId || '-')}</td>
+            <td>${item.isConsumable ? '○' : '×'}</td>
+            <td>${escapeHtml(item.notes || '-')}</td>
+            <td>
+                <button class="btn btn-success refill-btn" data-id="${item.id}">補充</button>
+                <button class="btn btn-danger delete-btn" data-id="${item.id}">削除</button>
+            </td>
+        `;
+        itemsTableBody.appendChild(row);
+    });
+
+    // 削除イベント
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            if (confirm('この備品を削除しますか？')) {
+                await deleteItem(id);
+            }
+        });
+    });
+
+    // 補充イベント
+    document.querySelectorAll('.refill-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.getAttribute('data-id');
+            openRefillModal(id);
+        });
     });
 }
 
-// ----- 備品追加 -----
-async function addItem() {
-    const name = itemNameInput.value.trim();
-    const location = itemLocationInput.value.trim();
-    const quantity = parseInt(itemQuantityInput.value, 10);
-    const operator = itemOperatorSelect.value;
-    const isConsumable = itemConsumableSelect.value === 'yes';
-    const notes = itemNotesInput.value.trim();
+// ----- 補充モーダル -----
+function openRefillModal(itemId) {
+    const item = currentItems.find(i => i.id === itemId);
+    if (!item) return;
+    refillingItemId = itemId;
 
-    if (!name) { showToast('物品名を入力してください', 'error'); return; }
-    if (isNaN(quantity) || quantity < 0) { showToast('数量は0以上の数値を入力してください', 'error'); return; }
+    if (item.recordType === 'status') {
+        refillQuantitySection.style.display = 'none';
+        refillStatusSection.style.display = 'block';
+        currentStatusDisplay.value = item.status || '—';
+        newStatus.value = item.status || '十分';
+    } else {
+        refillQuantitySection.style.display = 'block';
+        refillStatusSection.style.display = 'none';
+        currentQtyDisplay.value = item.quantity ?? 0;
+        addQuantity.value = 0;
+    }
+    refillStudentId.value = '';
+    refillModalOverlay.classList.add('active');
+}
+
+async function executeRefill() {
+    const item = currentItems.find(i => i.id === refillingItemId);
+    if (!item) return;
+
+    const sid = refillStudentId.value.trim();
+    if (!sid) {
+        showToast('出席番号を入力してください', 'error');
+        return;
+    }
 
     try {
-        await addDoc(collection(db, "items"), {
-            name,
-            location: location || '',
-            quantity,
-            operator: operator || '',
-            isConsumable,
-            notes: notes || '',
-            createdAt: serverTimestamp()
-        });
+        if (item.recordType === 'quantity') {
+            const addQty = parseInt(addQuantity.value, 10);
+            if (isNaN(addQty) || addQty < 0) {
+                showToast('有効な追加数量を入力してください', 'error');
+                return;
+            }
+            const newQty = (item.quantity || 0) + addQty;
+            await updateDoc(doc(db, "items", item.id), { quantity: newQty });
+            await writeSystemLog(
+                `補充 (数量): ${item.name} +${addQty} → ${newQty} (出席番号:${sid})`,
+                'items'
+            );
+            showToast(`「${item.name}」を${addQty}個補充しました（現在数: ${newQty}）`, 'success');
+        } else {
+            const status = newStatus.value;
+            await updateDoc(doc(db, "items", item.id), { status: status });
+            await writeSystemLog(
+                `補充 (状態): ${item.name} 状態を「${status}」に変更 (出席番号:${sid})`,
+                'items'
+            );
+            showToast(`「${item.name}」の状態を「${status}」に更新しました`, 'success');
+        }
 
-        await writeSystemLog(
-            `備品「${name}」を追加（数量: ${quantity}${isConsumable ? ' 消耗品' : ''}）`,
-            'items'
-        );
+        refillModalOverlay.classList.remove('active');
+        await loadItems();
+    } catch (error) {
+        console.error(error);
+        showToast('補充に失敗しました', 'error');
+    }
+}
+
+// ----- 追加 -----
+async function addItem() {
+    const name = itemName.value.trim();
+    const location = itemLocation.value.trim();
+    const type = recordType.value;
+    const consumable = itemConsumable.value === 'yes';
+    const notes = itemNotes.value.trim();
+    const sid = studentId.value.trim();
+
+    if (!name) { showToast('物品名を入力してください', 'error'); return; }
+    if (!sid) { showToast('出席番号を入力してください', 'error'); return; }
+
+    const data = {
+        name,
+        location: location || '',
+        recordType: type,
+        isConsumable: consumable,
+        studentId: sid,
+        notes: notes || '',
+        createdAt: serverTimestamp()
+    };
+
+    if (type === 'quantity') {
+        const qty = parseInt(itemQuantity.value, 10);
+        if (isNaN(qty) || qty < 0) {
+            showToast('有効な数量を入力してください', 'error');
+            return;
+        }
+        data.quantity = qty;
+    } else {
+        data.status = itemStatus.value;
+    }
+
+    try {
+        await addDoc(collection(db, "items"), data);
+        await writeSystemLog(`備品「${name}」を追加（出席番号:${sid}）`, 'items');
         showToast('備品を追加しました', 'success');
 
         // フォームリセット
-        itemNameInput.value = '';
-        itemLocationInput.value = '';
-        itemQuantityInput.value = '1';
-        itemOperatorSelect.value = '';
-        itemConsumableSelect.value = 'no';
-        itemNotesInput.value = '';
+        itemName.value = '';
+        itemLocation.value = '';
+        recordType.value = 'quantity';
+        quantityGroup.style.display = 'flex';
+        statusGroup.style.display = 'none';
+        itemQuantity.value = '1';
+        itemStatus.value = '十分';
+        studentId.value = '';
+        itemConsumable.value = 'no';
+        itemNotes.value = '';
 
         await loadItems();
     } catch (error) {
-        console.error('追加エラー:', error);
+        console.error(error);
         showToast('追加に失敗しました', 'error');
     }
 }
 
-function handleAddClick() {
-    pendingAddItem = true;
-    showLoginModal();
-}
-
-// ----- 備品削除 -----
+// ----- 削除 -----
 async function deleteItem(id) {
     try {
         await deleteDoc(doc(db, "items", id));
@@ -253,75 +273,21 @@ async function deleteItem(id) {
         showToast('備品を削除しました', 'success');
         await loadItems();
     } catch (error) {
-        console.error('削除エラー:', error);
+        console.error(error);
         showToast('削除に失敗しました', 'error');
     }
 }
 
-// ----- 入荷登録 -----
-async function handleMovementSubmit() {
-    const itemName = movementItemSelect.value.trim();
-    const addQty = parseInt(movementQuantityInput.value, 10);
-    const operator = movementOperatorSelect.value;
-
-    if (!itemName) { showToast('対象備品を選択してください', 'error'); return; }
-    if (isNaN(addQty) || addQty < 1) { showToast('数量は1以上を入力してください', 'error'); return; }
-
-    const targetItem = currentItems.find(item => item.name === itemName);
-    if (!targetItem) { showToast('選択された備品が見つかりません', 'error'); return; }
-
-    const newQty = (targetItem.quantity || 0) + addQty;
-
-    try {
-        await updateDoc(doc(db, "items", targetItem.id), { quantity: newQty });
-
-        await addDoc(collection(db, "record"), {
-            type: '入荷',
-            itemName: itemName,
-            itemId: targetItem.id,
-            quantity: addQty,
-            operator: operator || '',
-            timestamp: serverTimestamp(),
-            localTime: formatDateTime()
-        });
-
-        await writeSystemLog(
-            `入荷登録: ${itemName} +${addQty} (操作者: ${operator || '未入力'})`,
-            'items'
-        );
-        showToast(`「${itemName}」を${addQty}個入荷しました（現在数: ${newQty}）`, 'success');
-
-        movementItemSelect.value = '';
-        movementQuantityInput.value = '1';
-        movementOperatorSelect.value = '';
-
-        await loadItems();
-    } catch (error) {
-        console.error('入荷登録エラー:', error);
-        showToast('入荷登録に失敗しました', 'error');
-    }
-}
-
-// ----- イベント登録 -----
-addBtn.addEventListener('click', handleAddClick);
-document.querySelectorAll('.form-row input').forEach(input => {
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') handleAddClick(); });
+// ----- イベント -----
+addBtn.addEventListener('click', addItem);
+confirmRefillBtn.addEventListener('click', executeRefill);
+cancelRefillBtn.addEventListener('click', () => {
+    refillModalOverlay.classList.remove('active');
 });
-
-confirmLoginBtn.addEventListener('click', performLogin);
-cancelLoginBtn.addEventListener('click', () => {
-    pendingAddItem = false;
-    pendingDeleteId = null;
-    hideLoginModal();
-});
-loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') performLogin(); });
-
-movementSubmitBtn.addEventListener('click', handleMovementSubmit);
 
 // ----- 初期化 -----
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
-    await loadOperatorOptions();
-    await loadItems();
+    loadItems();
 });
