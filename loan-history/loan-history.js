@@ -1,5 +1,5 @@
 // =============================================
-// 貸出履歴モジュール（消耗品返却数量表示対応）
+// 貸出履歴モジュール（出席番号対応）
 // =============================================
 import { getDb, showToast } from "../common.js";
 import {
@@ -43,7 +43,7 @@ async function loadHistory() {
             allLoans.push({ id: doc.id, ...doc.data() });
         });
 
-        // 貸出日の降順でソート（新しい順）
+        // 貸出日の降順
         allLoans.sort((a, b) => {
             const aTime = a.createdAt ? a.createdAt.seconds : 0;
             const bTime = b.createdAt ? b.createdAt.seconds : 0;
@@ -71,13 +71,11 @@ function renderLoans(loans) {
             const statusClass = status === 'returned' ? 'status-returned' : 'status-active';
             const isConsumable = loan.isConsumable || false;
 
-            // 返却数量の表示ロジック
+            // 返却数量の表示
             let returnQtyDisplay = '-';
             if (isConsumable) {
                 if (status === 'returned' && loan.returnQty !== undefined && loan.returnQty !== null) {
                     returnQtyDisplay = loan.returnQty;
-                } else {
-                    returnQtyDisplay = '-';
                 }
             }
 
@@ -88,11 +86,10 @@ function renderLoans(loans) {
                 <td>${loan.quantity ?? ''}</td>
                 <td>${isConsumable ? '○' : '×'}</td>
                 <td>${loan.loanDate || ''}</td>
-                <td>${escapeHtml(loan.approver || '')}</td>
+                <td>${escapeHtml(loan.approverId || '')}</td>
                 <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                 <td>${loan.returnDate || '-'}</td>
-                <td>${escapeHtml(loan.receiver || '-')}</td>
-                <td>${escapeHtml(loan.returnName || '-')}</td>
+                <td>${escapeHtml(loan.receiverId || '-')}</td>
                 <td>${escapeHtml(loan.returnId || '-')}</td>
                 <td>${returnQtyDisplay}</td>
             `;
@@ -101,7 +98,7 @@ function renderLoans(loans) {
     }
 }
 
-// ----- フィルター処理 -----
+// ----- フィルター -----
 function applyFilter() {
     const selected = statusFilter.value;
     if (!selected) {
