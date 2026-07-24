@@ -175,21 +175,15 @@
                 <canvas id="chartItemsRank"></canvas>
             </div>
 
-            <!-- 消耗品 vs 非消耗品 -->
-            <div class="glass-card chart-card">
-                <h3>🔄 消耗品 vs 非消耗品 の貸出比率</h3>
-                <canvas id="chartConsumable"></canvas>
-            </div>
-
             <!-- 日別貸出件数推移 -->
             <div class="glass-card chart-card full-width">
                 <h3>📅 日別貸出件数推移</h3>
                 <canvas id="chartDaily"></canvas>
             </div>
 
-            <!-- 貸出先ランキング -->
+            <!-- 貸出先（クラス別）ランキング -->
             <div class="glass-card chart-card full-width">
-                <h3>👤 貸出先別ランキング</h3>
+                <h3>👤 クラス別貸出ランキング</h3>
                 <canvas id="chartBorrower"></canvas>
             </div>
 
@@ -232,7 +226,7 @@
         const chartGrid = document.getElementById('chartGrid');
 
         // チャートインスタンス
-        let chartItemsRank, chartConsumable, chartDaily, chartBorrower;
+        let chartItemsRank, chartDaily, chartBorrower;
         let allLoans = [];
 
         // ----- 時計 -----
@@ -254,13 +248,11 @@
                 allLoans = [];
                 snap.forEach(doc => {
                     const data = doc.data();
-                    // 日付を抽出（loanDate フィールドを使用）
                     const loanDate = data.loanDate || '';
                     allLoans.push({
                         date: loanDate,
                         item: data.itemName || '',
                         quantity: data.quantity || 0,
-                        consumable: data.isConsumable || false,
                         borrower: data.borrowerId || '',
                         status: data.status || 'active'
                     });
@@ -292,7 +284,6 @@
         function updateAllCharts() {
             const data = getFilteredData();
             updateItemsRankChart(data);
-            updateConsumableChart(data);
             updateDailyChart(data);
             updateBorrowerChart(data);
         }
@@ -338,40 +329,7 @@
             });
         }
 
-        // ----- 2. 消耗品 vs 非消耗品 -----
-        function updateConsumableChart(data) {
-            let consumableCount = 0,
-                nonConsumableCount = 0;
-            data.forEach(loan => {
-                if (loan.consumable) consumableCount++;
-                else nonConsumableCount++;
-            });
-
-            if (chartConsumable) chartConsumable.destroy();
-            const ctx = document.getElementById('chartConsumable').getContext('2d');
-            chartConsumable = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['非消耗品', '消耗品'],
-                    datasets: [{
-                        data: [nonConsumableCount, consumableCount],
-                        backgroundColor: ['#00B4D8', '#F59E0B'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#94A3B8', padding: 16 }
-                        }
-                    }
-                }
-            });
-        }
-
-        // ----- 3. 日別貸出件数推移 -----
+        // ----- 2. 日別貸出件数推移（y軸0から） -----
         function updateDailyChart(data) {
             const dateMap = {};
             data.forEach(loan => {
@@ -379,7 +337,7 @@
                 dateMap[loan.date] = (dateMap[loan.date] || 0) + 1;
             });
             const sorted = Object.keys(dateMap).sort();
-            const labels = sorted.map(d => d.slice(5)); // MM-DD
+            const labels = sorted.map(d => d.slice(5));
             const values = sorted.map(d => dateMap[d]);
 
             if (chartDaily) chartDaily.destroy();
@@ -407,6 +365,7 @@
                             grid: { color: 'rgba(255,255,255,0.05)' }
                         },
                         y: {
+                            min: 0,
                             ticks: { color: '#94A3B8', stepSize: 1 },
                             grid: { color: 'rgba(255,255,255,0.05)' }
                         }
@@ -415,15 +374,18 @@
             });
         }
 
-        // ----- 4. 貸出先ランキング -----
+        // ----- 3. クラス別貸出ランキング（出席番号の前2桁で集計） -----
         function updateBorrowerChart(data) {
-            const countMap = {};
+            const classMap = {};
             data.forEach(loan => {
-                const id = loan.borrower || '不明';
-                countMap[id] = (countMap[id] || 0) + 1;
+                const id = loan.borrower || '';
+                if (id.length >= 2) {
+                    const classPrefix = id.substring(0, 2);
+                    classMap[classPrefix] = (classMap[classPrefix] || 0) + 1;
+                }
             });
-            const sorted = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
-            const labels = sorted.map(e => e[0]);
+            const sorted = Object.entries(classMap).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(e => `${e[0]}組`);
             const values = sorted.map(e => e[1]);
 
             if (chartBorrower) chartBorrower.destroy();
@@ -448,6 +410,7 @@
                             grid: { display: false }
                         },
                         y: {
+                            min: 0,
                             ticks: { color: '#94A3B8', stepSize: 1 },
                             grid: { color: 'rgba(255,255,255,0.05)' }
                         }
