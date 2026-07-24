@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データ分析 - 東京都立田柄高等学校資産管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        :root {
+            --primary: #00B4D8;
+            --bg: #0F172A;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .header {
+            padding: 16px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(15,23,42,0.8);
+            backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-logo {
+            display: flex; align-items: center; gap: 12px;
+            text-decoration: none; color: var(--text);
+        }
+        .header-logo .icon {
+            width: 40px; height: 40px; background: var(--primary);
+            border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; font-size: 20px; color: #0F172A; font-weight: bold;
+        }
+        .header-logo h1 { font-size: 1.2rem; font-weight: 700; }
+        .header-time {
+            font-size: 0.9rem; color: var(--text-secondary);
+            background: var(--bg-card); padding: 8px 16px;
+            border-radius: 8px; border: 1px solid var(--glass-border);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+        .page-header {
+            display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+        }
+        .page-header h2 { font-size: 1.6rem; font-weight: 600; }
+        .back-link {
+            color: var(--primary); text-decoration: none; font-size: 0.9rem;
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 8px 12px; border-radius: 8px;
+            border: 1px solid var(--glass-border); transition: background 0.2s;
+        }
+        .back-link:hover { background: rgba(0,180,216,0.1); }
+
+        .filter-bar {
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 24px;
+        }
+        .filter-bar .form-group {
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .filter-bar label { font-size: 0.8rem; color: var(--text-secondary); }
+        .filter-bar input[type="date"] {
+            padding: 10px 14px; border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.05); color: var(--text);
+            font-size: 0.9rem; outline: none;
+        }
+        .filter-bar input[type="date"]:focus { border-color: var(--primary); }
+        .btn {
+            padding: 10px 20px; border-radius: 8px; border: none;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer;
+            transition: background 0.2s; white-space: nowrap;
+        }
+        .btn-primary { background: var(--primary); color: #0F172A; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-outline {
+            background: transparent; border: 1px solid var(--primary); color: var(--primary);
+        }
+        .btn-outline:hover { background: rgba(0,180,216,0.1); }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+        }
+        .chart-card h3 { margin-bottom: 16px; font-size: 1.05rem; color: var(--text-secondary); }
+        .chart-card canvas { max-height: 320px; }
+        .chart-card.full-width { grid-column: 1 / -1; }
+
+        .loading-overlay {
+            display: flex; justify-content: center; align-items: center;
+            padding: 80px 0; color: var(--text-secondary); font-size: 1rem;
+        }
+        .loading-overlay.hidden { display: none; }
+
+        .footer {
+            text-align: center; padding: 24px; color: var(--text-secondary);
+            font-size: 0.8rem; border-top: 1px solid var(--glass-border); margin-top: 32px;
+        }
+        .footer .dev-credit { margin-top: 8px; font-size: 0.75rem; opacity: 0.7; }
+
+        @media (max-width: 640px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="../index.html" class="header-logo">
+            <div class="icon">📦</div>
+            <h1>東京都立田柄高等学校資産管理</h1>
+        </a>
+        <div class="header-time" id="headerTime">--</div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← トップへ</a>
+            <h2>📊 データ分析</h2>
+        </div>
+
+        <!-- 日付フィルター -->
+        <div class="glass-card filter-bar">
+            <div class="form-group">
+                <label for="dateFrom">開始日</label>
+                <input type="date" id="dateFrom">
+            </div>
+            <div class="form-group">
+                <label for="dateTo">終了日</label>
+                <input type="date" id="dateTo">
+            </div>
+            <button class="btn btn-primary" id="applyFilterBtn">適用</button>
+            <button class="btn btn-outline" id="allFilterBtn">全期間表示</button>
+        </div>
+
+        <!-- ロード中表示 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            データを読み込み中...
+        </div>
+
+        <!-- チャートエリア -->
+        <div class="chart-grid" id="chartGrid" style="display:none;">
+
+            <!-- 物品別貸出回数ランキング -->
+            <div class="glass-card chart-card">
+                <h3>📦 物品別貸出回数ランキング</h3>
+                <canvas id="chartItemsRank"></canvas>
+            </div>
+
+            <!-- 消耗品 vs 非消耗品 -->
+            <div class="glass-card chart-card">
+                <h3>🔄 消耗品 vs 非消耗品 の貸出比率</h3>
+                <canvas id="chartConsumable"></canvas>
+            </div>
+
+            <!-- 日別貸出件数推移 -->
+            <div class="glass-card chart-card full-width">
+                <h3>📅 日別貸出件数推移</h3>
+                <canvas id="chartDaily"></canvas>
+            </div>
+
+            <!-- 貸出先ランキング -->
+            <div class="glass-card chart-card full-width">
+                <h3>👤 貸出先別ランキング</h3>
+                <canvas id="chartBorrower"></canvas>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div>© 2026 生徒会資産管理システム — 次世代へ引き継ぐために。</div>
+        <div class="dev-credit">開発者：包 宸華　テスト：李 昊宇</div>
+    </footer>
+
+    <script type="module">
+        // =============================================
+        // Firebase 初期化 & データ分析
+        // =============================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8KCEbdXL7wgEha70AWxGKcknyEoyssNU",
+            authDomain: "sbms-91d32.firebaseapp.com",
+            projectId: "sbms-91d32",
+            storageBucket: "sbms-91d32.firebasestorage.app",
+            messagingSenderId: "452504317991",
+            appId: "1:452504317991:web:620a06638ba65b06031e02"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // DOM 要素
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const applyFilterBtn = document.getElementById('applyFilterBtn');
+        const allFilterBtn = document.getElementById('allFilterBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const chartGrid = document.getElementById('chartGrid');
+
+        // チャートインスタンス
+        let chartItemsRank, chartConsumable, chartDaily, chartBorrower;
+        let allLoans = [];
+
+        // ----- 時計 -----
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('headerTime').textContent =
+                now.toLocaleString('ja-JP', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+        }
+
+        // ----- データ読み込み -----
+        async function loadData() {
+            loadingOverlay.classList.remove('hidden');
+            chartGrid.style.display = 'none';
+            try {
+                const snap = await getDocs(collection(db, "loans"));
+                allLoans = [];
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    // 日付を抽出（loanDate フィールドを使用）
+                    const loanDate = data.loanDate || '';
+                    allLoans.push({
+                        date: loanDate,
+                        item: data.itemName || '',
+                        quantity: data.quantity || 0,
+                        consumable: data.isConsumable || false,
+                        borrower: data.borrowerId || '',
+                        status: data.status || 'active'
+                    });
+                });
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+                alert('データの読み込みに失敗しました。');
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+            loadingOverlay.classList.add('hidden');
+            chartGrid.style.display = '';
+            updateAllCharts();
+        }
+
+        // ----- フィルター -----
+        function getFilteredData() {
+            const fromVal = dateFrom.value;
+            const toVal = dateTo.value;
+            if (!fromVal && !toVal) return allLoans;
+            return allLoans.filter(loan => {
+                if (!loan.date) return false;
+                if (fromVal && loan.date < fromVal) return false;
+                if (toVal && loan.date > toVal) return false;
+                return true;
+            });
+        }
+
+        function updateAllCharts() {
+            const data = getFilteredData();
+            updateItemsRankChart(data);
+            updateConsumableChart(data);
+            updateDailyChart(data);
+            updateBorrowerChart(data);
+        }
+
+        // ----- 1. 物品別貸出回数ランキング -----
+        function updateItemsRankChart(data) {
+            const countMap = {};
+            data.forEach(loan => {
+                countMap[loan.item] = (countMap[loan.item] || 0) + 1;
+            });
+            const sorted = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(e => e[0]);
+            const values = sorted.map(e => e[1]);
+
+            if (chartItemsRank) chartItemsRank.destroy();
+            const ctx = document.getElementById('chartItemsRank').getContext('2d');
+            chartItemsRank = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '貸出回数',
+                        data: values,
+                        backgroundColor: '#00B4D8',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94A3B8', stepSize: 1 },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#94A3B8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ----- 2. 消耗品 vs 非消耗品 -----
+        function updateConsumableChart(data) {
+            let consumableCount = 0,
+                nonConsumableCount = 0;
+            data.forEach(loan => {
+                if (loan.consumable) consumableCount++;
+                else nonConsumableCount++;
+            });
+
+            if (chartConsumable) chartConsumable.destroy();
+            const ctx = document.getElementById('chartConsumable').getContext('2d');
+            chartConsumable = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['非消耗品', '消耗品'],
+                    datasets: [{
+                        data: [nonConsumableCount, consumableCount],
+                        backgroundColor: ['#00B4D8', '#F59E0B'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94A3B8', padding: 16 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ----- 3. 日別貸出件数推移 -----
+        function updateDailyChart(data) {
+            const dateMap = {};
+            data.forEach(loan => {
+                if (!loan.date) return;
+                dateMap[loan.date] = (dateMap[loan.date] || 0) + 1;
+            });
+            const sorted = Object.keys(dateMap).sort();
+            const labels = sorted.map(d => d.slice(5)); // MM-DD
+            const values = sorted.map(d => dateMap[d]);
+
+            if (chartDaily) chartDaily.destroy();
+            const ctx = document.getElementById('chartDaily').getContext('2d');
+            chartDaily = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '貸出件数',
+                        data: values,
+                        borderColor: '#00B4D8',
+                        backgroundColor: 'rgba(0,180,216,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#00B4D8'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94A3B8', maxRotation: 45 },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#94A3B8', stepSize: 1 },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ----- 4. 貸出先ランキング -----
+        function updateBorrowerChart(data) {
+            const countMap = {};
+            data.forEach(loan => {
+                const id = loan.borrower || '不明';
+                countMap[id] = (countMap[id] || 0) + 1;
+            });
+            const sorted = Object.entries(countMap).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(e => e[0]);
+            const values = sorted.map(e => e[1]);
+
+            if (chartBorrower) chartBorrower.destroy();
+            const ctx = document.getElementById('chartBorrower').getContext('2d');
+            chartBorrower = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '貸出回数',
+                        data: values,
+                        backgroundColor: '#8B5CF6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94A3B8' },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { color: '#94A3B8', stepSize: 1 },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ----- イベント -----
+        applyFilterBtn.addEventListener('click', updateAllCharts);
+        allFilterBtn.addEventListener('click', () => {
+            dateFrom.value = '';
+            dateTo.value = '';
+            updateAllCharts();
+        });
+
+        // ----- 初期化 -----
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+            loadData();
+        });
+    </script>
+</body>
+</html>
